@@ -1,77 +1,71 @@
-// This is implemented mostly as a
-// test runner, but you can pass arbitrary
-// orders to `getPrice` to actually use this.
+if (!module.parent) {
+  console.info(`# Usage:
+This exports a function that accepts an order and pricing information.
 
-var priceData = {};
+  ## Order example:
 
-var XMLHttpRequest = XMLHttpRequest || require("xmlhttprequest").XMLHttpRequest;
-var req = new XMLHttpRequest();
-req.onreadystatechange = function() {
-  var DONE = this.DONE || 4;
-  if (this.readyState === DONE){
-    res = this.responseText;
-    if (!res || !res.length) return console.error("No response");
-    setPriceData(JSON.parse(res));
+    {
+      name:String,
+      qty:Number
+    }
 
-    // TODO: OK, it's a bit silly having test orders against an XHR response that's
-    // likely dynamic – this should really live in a separate integration
-    // test suite with mocked responses for some stability.
+  ## Pricing example:
 
-    var testOrders = [
-      // Single item, undefined quantity
-      {order:[{name:"A"}], expect: 0},
-      // Single item, single quantity
-      {order:[{name:"A", qty:1}], expect: 20},
-      // Single item, double quantity
-      {order:[{name:"A", qty:2}], expect: 40},
-      // Single item, special price
-      {order:[{name:"A", qty:3}], expect: 50},
-      // Two item types, [one special_qty, one without]
-      {order:[{name:"A", qty:3}, {name:"C", qty:3}], expect: 170},
-      // Two item types, [regular, special price]
-      {order:[{name:"A", qty:1}, {name:"B", qty:4}], expect: 100},
-      // Multiple items, [regular and special qty and no set special qty]
-      {order:[{name:"A", qty:1}, {name:"B", qty:4}, {name:"C", qty:4}], expect: 260},
-      // Unknown item
-      {order:[{name:"ZZ", qty:1}], expect: 0},
-      // Unknown and known items [unknown, special qty, no set special qty]
-      {order:[{name:"ZZ", qty:1}, {name:"B", qty:4}, {name:"C", qty:4}], expect: 240}
-    ];
+    {
+      prices:
+        [
+          {
+            name:String,
+            unit_price:Number,
+            special_qty:Number,
+            special_price:Number
+          },
+          …
+        ]
+    }
 
-    testOrders.map(function(test) {
-      var price = getPrice(test.order);
-      var expectedPrice = test.expect;
+See \`test.js\` for a usage example.
 
-      if (price === expectedPrice)
-        console.log(JSON.stringify(test.order) + ' passed 👌');
-      else
-        console.error(`😟 Expected ${expectedPrice}, got ${price}:
-          `+ JSON.stringify(test.order))
-    });
-  }
-};
-req.open('GET', 'https://api.myjson.com/bins/gx6vz', true);
-req.send();
-
-function setPriceData(data) {
-  // var input = {"prices":[
-  //   {"name":"A","unit_price":20,"special_qty":3,"special_price":50},
-  //   {"name":"B","unit_price":30,"special_qty":4,"special_price":80},
-  //   {"name":"C","unit_price":40},
-  //   {"name":"D","unit_price":50,"special_qty":2,"special_price":90},
-  //   {"name":"E","unit_price":60}
-  // ]};
-  data.prices.map(function(item){
-    priceData[item.name] = item;
-    delete priceData[item.name].name;
-  });
+If no pricing information is provided, a request will be made to an external pricing service.`);
 }
 
-function getPrice(order) {
-  if(!order || order.constructor !== Array || !order.length)
-    return 0;
+var priceData = require('./data');
 
+// var XMLHttpRequest = XMLHttpRequest || require("xmlhttprequest").XMLHttpRequest;
+// var req = new XMLHttpRequest();
+// req.onreadystatechange = function() {
+//   var DONE = this.DONE || 4;
+//   if (this.readyState === DONE){
+//     res = this.responseText;
+//     if (!res || !res.length) return console.error("No response");
+//     setPriceData(JSON.parse(res));
+//   }
+// };
+// req.open('GET', 'https://api.myjson.com/bins/gx6vz', true);
+// req.send();
+
+module.exports = function getPrice(order, pricing) {
+  if(!order || order.constructor !== Array || !order.length) return 0;
+  if(!pricing && !priceDataLoaded()) return 'Loading price information…';
+
+  if(pricing) priceData = setPriceData(pricing);
   return order.map(getItemPrice).reduce(getOrderPrice);
+};
+
+function priceDataLoaded() {
+  return !(Object.keys(priceData).length === 0 && priceData.constructor === Object);
+}
+
+function setPriceData(data) {
+  if (!data) return {};
+
+  priceData = {};
+
+  data.prices.map(function(item){
+    priceData[item.name] = item;
+  });
+
+  return priceData;
 }
 
 function getOrderPrice(prev, next) {
