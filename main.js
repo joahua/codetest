@@ -1,48 +1,27 @@
 if (!module.parent) {
-  console.info(`# Usage:
-This exports a function that accepts an order and pricing information.
-
-  ## Order example:
-
-    {
-      name:String,
-      qty:Number
-    }
-
-  ## Pricing example:
-
-    {
-      prices:
-        [
-          {
-            name:String,
-            unit_price:Number,
-            special_qty:Number,
-            special_price:Number
-          },
-          …
-        ]
-    }
-
-See \`test.js\` for a usage example.
-
-If no pricing information is provided, a request will be made to an external pricing service.`);
+  console.info(`This program should be required and not run directly. See README.md for usage information.`);
 }
 
 var priceData = require('./data');
 
-// var XMLHttpRequest = XMLHttpRequest || require("xmlhttprequest").XMLHttpRequest;
-// var req = new XMLHttpRequest();
-// req.onreadystatechange = function() {
-//   var DONE = this.DONE || 4;
-//   if (this.readyState === DONE){
-//     res = this.responseText;
-//     if (!res || !res.length) return console.error("No response");
-//     setPriceData(JSON.parse(res));
-//   }
-// };
-// req.open('GET', 'https://api.myjson.com/bins/gx6vz', true);
-// req.send();
+var XMLHttpRequest = XMLHttpRequest || require("xmlhttprequest").XMLHttpRequest;
+var req = new XMLHttpRequest();
+req.onreadystatechange = function() {
+  var DONE = this.DONE || 4;
+  if (this.readyState === DONE){
+    res = this.responseText;
+    if (!res || !res.length) return console.error("No response");
+    try {res = JSON.parse(res)}
+    catch (e) {
+      res = {
+        prices:[]
+      };
+    };
+    setPriceData(res);
+  }
+};
+req.open('GET', 'https://api.myjson.com/bins/gx6vz', true);
+req.send();
 
 module.exports = function getPrice(order, pricing) {
   if(!order || order.constructor !== Array || !order.length) return 0;
